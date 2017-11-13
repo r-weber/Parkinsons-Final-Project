@@ -1,0 +1,97 @@
+---
+title: "Parkinson's Exercise Intervention"
+author: "Rachel Weber"
+date: "November 12, 2017"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+setwd("C:/Users/rache/Downloads")
+
+library(ggplot2)
+library(tableone)
+library(gridExtra)
+park <- read.csv(file="Parkinsons.csv", sep=",")
+park$Group <- as.factor(park$Group)
+park <- park[complete.cases(park$SixMn_Wk4) == TRUE,]
+park <- park[complete.cases(park$FiveM_Wk4) == TRUE,]
+
+park$sixdif <- park$SixMn_Wk4-park$SixMn_Wk0 # negative if improvement
+park$secdif <- park$FiveM_Tm4-park$FiveM_Tm0 # negative if improvement
+
+```
+## Introduction
+This study addressed the dearth of information pertaining to long-term benefit of regemented exercise for people with early to mid-stage Parkinson's Disease. 121 participants were enrolled in the trial and were randomly assigned to one of three treatment groups, stratifying by Gender. The three exercise groups were as follows:
+1. At home exercises recommended by the National Parkinson's Foundation. Participants attended one supervised session per month.
+2. A flexibility/balance/function (FBF) program of three observed sessions weekly for the first 4 months, and tapered frequency down to once a month for the remaining 8 months.
+3. An Aerobic Exercise program with a supervision structure identical to the FBF group.
+The participant population is detailed in Table 1. Retention rates remained quite high at 4 weeks with 86.8% of participants retained at this milestone. The average participant had been diagnoses with PD for 4.44 years with a standard deviation of 3.91 years. Unfortunately, 85.1% of the study population was PD stage 2 or 2.5. This does impose some restrictions on modeling capabilities but application of bootstrap sampling methods enables a stronger assessment of true population variation.
+```{r}
+## Vector of variables to summarize
+myVars <- c("Age", "YearsDx", "Gender", "HYstage0")
+## Vector of categorical variables that need transformation
+catVars <- c("Gender", "HYstage0")
+## Create a TableOne object
+tab2 <- CreateTableOne(vars = myVars, data = park, factorVars = catVars)
+tab2
+```
+
+## Question and Hypothesis
+Reported findings showed that the greatest improvement was seen at the four month check-up. Following this vein, the research question asked here is whether or not a person's Hoehn and Yahr stage of PD at week zero was a predictor of the level of improvement seen at week four. It may be that those with more advanced Parkinson's did not confer as great a benefit from the interventions as those with earlier stages. Stage was scaled from 1 (lowest) to 4 (highest), moving up in increments of .5. Our findings could serve the physician community by providing anticipated benefits for patients at various stages of PD. If a patient is more advanced, perhaps a more involved intervention would be prescribed. Conversely, those with very early stage PD may be encouraged to pick-up an exercise regimen, but may need less supervision and monitoring.
+
+## Methods
+We first generated two outcome variables. 1) The difference in time taken to walk 2 meters between week 4 and 0, a negative value indicated a decrease in time. 2) The difference in distance walked in 6 minutes between week 4 and week 0, again with negative values indicating improvement. Participants worsened by an average of `r mean(park$sixdif)` _______ in their 6 minute walk with standard deviation `r sd(park$sixdif)`. This incredible variability suggests that some patients benefitted much greater than others. Participants improved by an average of `r mean(park$secdif)` seconds in their 2 meter walk time with standard deviation `r sd(park$secdif)`. Again this indicates that despite intervention, some patients still worsened while others saw improvement.
+To initially assess model capabilities, we conducted a bootstrap assessment of R-squared values for the crude and adjusted models. The crude model contains the precision variables of Gender and Group with an interaction variable of Group with the primary outcome at the time point, either six minute walk distance or 2 meter walk time, and an adjustment for Levedopa dose at the time of the assessment--4 weeks in this assessment. The adjusted model includes the variable indicating stage at the start of the study. Following generation of R-squared values, multivariate linear models were compared against each other using a partial-F test. Though a single new variable was introduced in the larger model, a Partial F test will give the same results as a t-test and was appropriate to use in this case. 
+
+## Results:
+### R-Squared Values:
+Quick assessment of outcome variables indicated that enormous variability existed in benefit seen by participants. To mediate the effect of outlier results, R-squared values were fitted to bootstrapped samples of the dataset (Table 2.) Values for both models predicting outcomes were highly similar, as is shown by the large amount of overlap between the crude and adjusted areas. 
+```{r}
+# bootstrap function that reports bootstrapped r squared values
+boot_r2 <- function(formula, dat){
+  fun_lm <- function(formula, dat){
+    summary(lm(formula, data=dat[sample(1:nrow(dat), nrow(dat), replace=TRUE),]))$r.squared
+  }
+  sapply(1:1000, function(x) fun_lm(formula,dat))
+}
+
+# bootstrap r squared for change in 6 minute distance
+six_r2 <- as.data.frame(boot_r2(sixdif ~ HYstage0 + Group + Gender + LEDD4 + Group*SixMn_Wk4, park))
+colnames(six_r2) <- c("rsq")
+six_crude <- as.data.frame(boot_r2(sixdif ~ Group + Gender + LEDD4 + Group*SixMn_Wk4, park))
+colnames(six_crude) <- c("rsq")
+# assign model name and bind into a dataframe
+six_r2$model <- 'Stage Adjusted'
+six_crude$model <- 'Crude'
+six_r2_full <- rbind(six_r2, six_crude)
+
+# density plot
+plot1 <- ggplot(six_r2_full, aes(rsq, fill = model)) + geom_density(alpha = 0.2) +
+  ggtitle('6 Minute Distance') + ylab('Density') + xlab('R-Squared') + guides(fill=FALSE)
+      # enormous overlap indicates that stage at diagnosis may not improve
+      # variation predicted by model
+
+# bootstrap r squared for change in 2 meter time
+sec_r2 <- as.data.frame(boot_r2(secdif ~ HYstage0 + Group + Gender + LEDD4 + Group*SixMn_Wk4, park))
+colnames(sec_r2) <- c("rsq")
+sec_crude <- as.data.frame(boot_r2(secdif ~ Group + Gender + LEDD4 + Group*SixMn_Wk4, park))
+colnames(sec_crude) <- c("rsq")
+# assign model name and bind into 1 dataframe
+sec_r2$model <- 'Stage Adjusted'
+sec_crude$model <- 'Crude'
+sec_r2_full <- rbind(sec_r2, sec_crude)
+
+# density plot
+plot2 <- ggplot(sec_r2_full, aes(rsq, fill = model)) + geom_density(alpha = 0.2) +
+  ggtitle('5 Meter Time') + ylab('Density') + xlab('R-Squared') + theme(legend.position = c(0.8, .8))
+
+grid.arrange(plot1, plot2, ncol=2)
+```
+
+### Model Significance
+
+
+
+
+

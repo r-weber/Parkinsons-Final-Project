@@ -38,16 +38,16 @@ boot_r2 <- function(formula, dat){
 }
 
 # bootstrap r squared for change in 6 minute distance
-six_r2 <- as.data.frame(boot_r2(sixdif ~ HYstage0 + Group + Gender, park))
+six_r2 <- as.data.frame(boot_r2(sixdif ~ HYstage0 + Group + Gender + LEDD4 + Group*SixMn_Wk4, park))
 colnames(six_r2) <- c("rsq")
-six_crude <- as.data.frame(boot_r2(sixdif ~ Group + Gender, park))
+six_crude <- as.data.frame(boot_r2(sixdif ~ Group + Gender + LEDD4 + Group*SixMn_Wk4, park))
 colnames(six_crude) <- c("rsq")
 # assign model name and bind into 1 dataframe
 six_r2$model <- 'Stage Adjusted'
 six_crude$model <- 'Crude'
 six_r2_full <- rbind(six_r2, six_crude)
 
-# plot overlapping histograms
+# overlapping density plots
 ggplot(six_r2_full, aes(rsq, fill = model)) + geom_density(alpha = 0.2) +
   ggtitle('R-Squared Values for Change in 6 Minute Distance') + ylab('Frequency') + xlab('R-Squared')
       # enormous overlap indicates that stage at diagnosis may not improve
@@ -55,9 +55,9 @@ ggplot(six_r2_full, aes(rsq, fill = model)) + geom_density(alpha = 0.2) +
 
 
 # bootstrap r squared for change in 2 meter time
-sec_r2 <- as.data.frame(boot_r2(secdif ~ HYstage0 + Group + Gender, park))
+sec_r2 <- as.data.frame(boot_r2(secdif ~ HYstage0 + Group + Gender + LEDD4 + Group*SixMn_Wk4, park))
 colnames(sec_r2) <- c("rsq")
-sec_crude <- as.data.frame(boot_r2(secdif ~ Group + Gender, park))
+sec_crude <- as.data.frame(boot_r2(secdif ~ Group + Gender + LEDD4 + Group*SixMn_Wk4, park))
 colnames(sec_crude) <- c("rsq")
 # assign model name and bind into 1 dataframe
 sec_r2$model <- 'Stage Adjusted'
@@ -76,6 +76,12 @@ lm_sec_crude <- lm(park$secdif ~ park$Group + park$Gender) # nothing significant
 lm_sixminute <- lm(park$sixdif ~ park$HYstage0 + park$Group + park$Gender) # group 6 significant
 lm_seconds <- lm(park$secdif ~ park$HYstage0 + park$Group + park$Gender) # not significant
 
-# UPDRS score
-lm_sixminute_score <- lm(park$sixdif ~ park$UPDRS0 + park$Group + park$Gender) # score not significant
-lm_seconds_score <- lm(park$secondsdif ~ park$UPDRS0 + park$Group + park$Gender) # nothing significant
+# Partial F tests:
+anova(lm_six_crude, lm_sixminute) # not significant
+anova(lm_sec_crude, lm_seconds) # not significant
+
+# plots
+park$improvement_six <- ifelse(park$sixdif > 0,"None", "Improved")
+table()
+
+ggplot (park, aes(x = HYstage0, y = sixdif, color = Group)) + geom_point(size=1.5)
