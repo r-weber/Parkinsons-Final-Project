@@ -27,7 +27,7 @@ park$sixdif <- park$SixMn_Wk4-park$SixMn_Wk0 # negative if improvement
 park$secdif <- park$FiveM_Tm4-park$FiveM_Tm0 # negative if improvement
 
 # initial test
-test <- lm(sixdif ~ HYstage0 + Gender + Group, data=park)
+test <- lm(sixdif ~ Gender + Group + LEDD4 + Group*LEDD4, data=park)
 
 # bootstrap function that reports bootstrapped r squared values
 boot_r2 <- function(formula, dat){
@@ -69,19 +69,22 @@ ggplot(sec_r2_full, aes(rsq, fill = model)) + geom_density(alpha = 0.2) +
   ggtitle('R-Squared Values for Change in 5 Meter Time') + ylab('Frequency') + xlab('R-Squared')
 
 # crude linear model
-lm_six_crude <- lm(park$sixdif ~ park$Group + park$Gender) # group 6 significant
-lm_sec_crude <- lm(park$secdif ~ park$Group + park$Gender) # nothing significant
+lm_six_crude <- lm(park$sixdif ~ Gender + Group + LEDD4 + Group*LEDD4, data = park) # group 6 significant
+lm_sec_crude <- lm(park$secdif ~ Gender + Group + LEDD4 + Group*LEDD4, data = park) # nothing significant
 
-#stage at diagnosis
-lm_sixminute <- lm(park$sixdif ~ park$HYstage0 + park$Group + park$Gender) # group 6 significant
-lm_seconds <- lm(park$secdif ~ park$HYstage0 + park$Group + park$Gender) # not significant
+#stage at week 0
+lm_sixminute <- lm(park$sixdif ~ HYstage0 + Gender + Group + LEDD4 + Group*LEDD4, data = park) # group 6 significant
+lm_seconds <- lm(park$secdif ~ HYstage0 + Gender + Group + LEDD4 + Group*LEDD4, data = park) # not significant
 
 # Partial F tests:
-anova(lm_six_crude, lm_sixminute) # not significant
-anova(lm_sec_crude, lm_seconds) # not significant
+six_anova <- anova(lm_six_crude, lm_sixminute) # not significant
+sec_anova <- anova(lm_sec_crude, lm_seconds) # not significant
 
 # plots
 park$improvement_six <- ifelse(park$sixdif > 0,"None", "Improved")
 table()
 
 ggplot (park, aes(x = HYstage0, y = sixdif, color = Group)) + geom_point(size=1.5)
+
+library(pander)
+pander(table(park$HYstage0, park$Group))

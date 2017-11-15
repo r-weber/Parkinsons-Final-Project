@@ -27,7 +27,7 @@ This study addressed the dearth of information pertaining to long-term benefit o
 2. A flexibility/balance/function (FBF) program of three observed sessions weekly for the first 4 months, and tapered frequency down to once a month for the remaining 8 months.
 3. An Aerobic Exercise program with a supervision structure identical to the FBF group.
 The participant population is detailed in Table 1. Retention rates remained quite high at 4 weeks with 86.8% of participants retained at this milestone. The average participant had been diagnoses with PD for 4.44 years with a standard deviation of 3.91 years. Unfortunately, 85.1% of the study population was PD stage 2 or 2.5. This does impose some restrictions on modeling capabilities but application of bootstrap sampling methods enables a stronger assessment of true population variation.
-```{r}
+```{r, echo=F}
 ## Vector of variables to summarize
 myVars <- c("Age", "YearsDx", "Gender", "HYstage0")
 ## Vector of categorical variables that need transformation
@@ -46,8 +46,7 @@ To initially assess model capabilities, we conducted a bootstrap assessment of R
 
 ## Results:
 ### R-Squared Values:
-Quick assessment of outcome variables indicated that enormous variability existed in benefit seen by participants. To mediate the effect of outlier results, R-squared values were fitted to bootstrapped samples of the dataset (Table 2.) Values for both models predicting outcomes were highly similar, as is shown by the large amount of overlap between the crude and adjusted areas. 
-```{r}
+```{r, echo=F}
 # bootstrap function that reports bootstrapped r squared values
 boot_r2 <- function(formula, dat){
   fun_lm <- function(formula, dat){
@@ -87,10 +86,37 @@ plot2 <- ggplot(sec_r2_full, aes(rsq, fill = model)) + geom_density(alpha = 0.2)
   ggtitle('5 Meter Time') + ylab('Density') + xlab('R-Squared') + theme(legend.position = c(0.8, .8))
 
 grid.arrange(plot1, plot2, ncol=2)
+
+```
+Quick assessment of outcome variables indicated that enormous variability existed in benefit seen by participants. To mediate the effect of outlier results, R-squared values were fitted to bootstrapped samples of the dataset (Table 2.) Values for both models predicting outcomes were highly similar, as is shown by the large amount of overlap between the crude and adjusted areas. The median values for the crude and adjusted models predicting improvement in six minute walking distance are `r round(median(six_r2_full$rsq[six_r2_full$model == "Crude"]),3)` and `r round(median(six_r2_full$rsq[six_r2_full$model == "Stage Adjusted"]),3)`, respectively. Those for improvement in 2 meter walking time are `r round(median(sec_r2_full$rsq[six_r2_full$model == "Crude"]),3)`
+ `r round(median(sec_r2_full$rsq[six_r2_full$model == "Stage Adjusted"]),3)`, respectively.
+
+```{r, echo=F}
+# crude linear model
+lm_six_crude <- lm(park$sixdif ~ Gender + Group + LEDD4 + Group*LEDD4, data = park)
+lm_sec_crude <- lm(park$secdif ~ Gender + Group + LEDD4 + Group*LEDD4, data = park) 
+
+#adjusted for stage at week 0
+lm_sixminute <- lm(park$sixdif ~ HYstage0 + Gender + Group + LEDD4 + Group*LEDD4, data = park)
+lm_seconds <- lm(park$secdif ~ HYstage0 + Gender + Group + LEDD4 + Group*LEDD4, data = park)
+
+# Partial F tests:
+six_anova <- anova(lm_six_crude, lm_sixminute) # not significant
+sec_anova <- anova(lm_sec_crude, lm_seconds) # not significant
+
+est_six_crude <- lm_six_crude$coefficients
+est_six_adj <- lm_sixminute$coefficients
+
+six_change$variable <- c("Gender", "Group", "Levidopa", "Levidopa/Group", "HY Stage")
+six_change$crude <- c(-8.02, 28.53, )
 ```
 
 ### Model Significance
+To understand if differences in Stage of Parkinson's Disease at the start of treatment impacted a patient's level of improvement by week 4, we ran two models. An unadjusted model that contained the precision variables accounted for in study design, and an adjusted model that added in stage at study outset. The unadjusted model contained Gender, Group, Levidopa dosage at week 4, and the interaction between levidopa dosage and Group. The slope estimates for each variable change by as much as .01 but more typically as little as .001 with the adjustment for stage of PD in the model. Change in slope estimates are shown in Table 3. Stage was not statistically significant, and due to the incredibly small changes in slope estimates for the other variables, it's contribution to the model had no clinical significance. Partial F-tests of the two models indicated that there was no significant difference for both six minute walking distance (p: .758) and for two meter walking time (p: .847)
 
+## Discussion
+After generation of the crude and adjusted model, it was found that a participant's stage of Parkinson's Disease at the start of the study did not have a clinically significant impact on the level of improvement they saw after four weeks, regardless of which treatment group they were in. After control for Gender differences and levidopa dose differences, at appears that the treatment group was the best predictor of of the level of improvement in an individual.
+There are some limitations of this study that must be addressed. Table 1 shows that the majority of patients (85.1%) had stage 2 or 2.5 of Parkinson's Disease, with only 2 patients of the population retained at week four having a physician measured stage of 1. Due to the limited variability in stage, it is possible that true differences in response by week four due to various severities of the disease were not detected.
 
 
 
