@@ -53,18 +53,20 @@ Quick assessment of outcome variables indicated that enormous variability existe
 ### R-Squared Values:
 ```{r, echo=F}
 # bootstrap function that reports bootstrapped r squared values
+source("C:/Users/rache/Documents/Methods 6611/Stratified Sampling Code.R", local = TRUE)
 boot_r2 <- function(formula, dat){
   fun_lm <- function(formula, dat){
-    summary(lm(formula, data=dat[sample(1:nrow(dat), nrow(dat), replace=TRUE),]))$r.squared
+    summary(lm(formula, data=stratified(park, 2, nrow(park)/3, select = NULL, replace = TRUE)))$r.squared
   }
   sapply(1:1000, function(x) fun_lm(formula,dat))
 }
 
 # bootstrap r squared for change in 6 minute distance
-six_r2 <- as.data.frame(boot_r2(sixdif ~ HYstage0 + Group + Gender + LEDD4 + Group*SixMn_Wk4, park))
+six_r2 <- as.data.frame(boot_r2(sixdif ~ HYstage0 + Group + Gender + LEDD4, park))
 colnames(six_r2) <- c("rsq")
-six_crude <- as.data.frame(boot_r2(sixdif ~ Group + Gender + LEDD4 + Group*SixMn_Wk4, park))
+six_crude <- as.data.frame(boot_r2(sixdif ~ Group + Gender + LEDD4, park))
 colnames(six_crude) <- c("rsq")
+
 # assign model name and bind into a dataframe
 six_r2$model <- 'Adjusted'
 six_crude$model <- 'Crude'
@@ -73,13 +75,13 @@ six_r2_full <- rbind(six_r2, six_crude)
 # density plot
 plot1 <- ggplot(six_r2_full, aes(rsq, fill = model)) + geom_density(alpha = 0.2) +
   ggtitle('6 Minute Distance') + ylab('Density') + xlab('R-Squared') + guides(fill=FALSE)
-      # enormous overlap indicates that stage at diagnosis may not improve
-      # variation predicted by model
+# enormous overlap indicates that stage at diagnosis may not improve
+# variation predicted by model
 
 # bootstrap r squared for change in 2 meter time
-sec_r2 <- as.data.frame(boot_r2(secdif ~ HYstage0 + Group + Gender + LEDD4 + Group*SixMn_Wk4, park))
+sec_r2 <- as.data.frame(boot_r2(secdif ~ HYstage0 + Group + Gender + LEDD4, park))
 colnames(sec_r2) <- c("rsq")
-sec_crude <- as.data.frame(boot_r2(secdif ~ Group + Gender + LEDD4 + Group*SixMn_Wk4, park))
+sec_crude <- as.data.frame(boot_r2(secdif ~ Group + Gender + LEDD4, park))
 colnames(sec_crude) <- c("rsq")
 # assign model name and bind into 1 dataframe
 sec_r2$model <- 'Stage Adjusted'
@@ -88,10 +90,9 @@ sec_r2_full <- rbind(sec_r2, sec_crude)
 
 # density plot
 plot2 <- ggplot(sec_r2_full, aes(rsq, fill = model)) + geom_density(alpha = 0.2) +
-  ggtitle('5 Meter Time') + ylab('Density') + xlab('R-Squared') + theme(legend.position = c(0.8, .8)) 
+  ggtitle('2 Meter Time') + ylab('Density') + xlab('R-Squared') + theme(legend.position = c(0.7, .8)) 
 
 grid.arrange(plot1, plot2, ncol=2)
-
 ```
 To mediate the effect of outlier results, R-squared values were fitted to bootstrapped samples of the dataset (Table 2). Values for both crude and adjusted models highly similar, as is shown by the large amount of overlap in density areas. The median values for the crude and adjusted models predicting improvement in six minute walking distance are `r round(median(six_r2_full$rsq[six_r2_full$model == "Crude"]),3)` and `r round(median(six_r2_full$rsq[six_r2_full$model == "Stage Adjusted"]),3)`, respectively. Those for improvement in 2 meter walking time are `r round(median(sec_r2_full$rsq[six_r2_full$model == "Crude"]),3)`
  `r round(median(sec_r2_full$rsq[six_r2_full$model == "Stage Adjusted"]),3)`, respectively.
