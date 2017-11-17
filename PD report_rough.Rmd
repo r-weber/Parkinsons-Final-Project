@@ -37,15 +37,15 @@ myVars <- c("Age", "YearsDx", "Gender", "HYstage0")
 catVars <- c("Gender", "HYstage0")
 ## Create a TableOne object
 tab2 <- CreateTableOne(vars = myVars, data = park, factorVars = catVars)
-tab2
+print(tab2)
 ```
 
 ## Question and Hypothesis
 Published findings showed that the greatest improvement in mobility was seen at the four month milestone. Following this vein, the question addressed here asks whether or not a person's Hoehn and Yahr stage of Parkinson's Disease at week zero was a predictor of the level of improvement seen at month four. It may be that those with more advanced Parkinson's did not confer as great a benefit from the interventions as those with earlier stages. Stage was scaled from 1 (lowest) to 4 (highest), moving up in increments of .5. Our findings could serve the physician community by providing anticipated benefits for patients at various stages of PD. If a patient is more advanced, perhaps a more involved intervention would be prescribed. Conversely, those with very early stage PD may be encouraged to pick-up an exercise regimen, but may need less supervision and monitoring.
 
 ## Methods
-We first generated two outcome variables. 1) The difference in time taken to walk 2 meters between week 4 and 0, a negative value indicated a decrease in time. 2) The difference in distance walked in 6 minutes between week 4 and week 0, again with negative values indicating improvement. Participants worsened by an average of `r mean(park$sixdif)` meters in their 6 minute walk with standard deviation `r sd(park$sixdif)`. This incredible variability suggests that some patients benefitted much greater than others. Participants improved by an average of `r mean(park$secdif)` seconds in their 2 meter walk time with standard deviation `r sd(park$secdif)`. Again this indicates that patients had varying degrees of response to the intervention.
-To broadly assess model capabilities, we conducted a bootstrap assessment of R-squared values for the crude and adjusted models. The crude model contains the precision variables of Gender, Group, Levidopa dosage at month four, and an interaction variable of Group with Levidopa. These predicted either six minute walk distance or 2 meter walk time. The adjusted model includes the variable indicating stage of Parkinson's Disease at the start of the study. Following generation of R-squared values, multivariate linear models were compared against each other using a partial-F test. Though a single new variable was introduced in the larger model, a Partial F test will give the same results as a t-test and was appropriate to use in this case. 
+We first generated two outcome variables. 1) The difference in time taken to walk 2 meters between week 4 and 0, a negative value indicated a decrease in time. 2) The difference in distance walked in 6 minutes between week 4 and week 0, again with negative values indicating improvement. Participants worsened by an average of `r round(mean(park$sixdif), 2)` meters in their 6 minute walk with standard deviation `r round(sd(park$sixdif), 2)`. This incredible variability suggests that some patients benefitted much greater than others. Participants improved by an average of `r round(mean(park$secdif), 2)` seconds in their 2 meter walk time with standard deviation `r round(sd(park$secdif), 2)`. Again this indicates that patients had varying degrees of response to the intervention.\n
+To broadly assess model capabilities, we conducted a bootstrap assessment of R-squared values for the crude and adjusted models. The crude models contained the precision variables of Gender, Group, Levidopa dosage at month four, and an interaction variable of Group with Levidopa. These predicted either six minute walk distance or 2 meter walk time. The adjusted model includes the variable indicating stage of Parkinson's Disease at the start of the study. Following generation of R-squared values, multivariate linear models were compared against each other using a partial-F test. Though a single new variable was introduced in the larger model, a Partial F test will give the same results as a t-test and was appropriate to use in this case. 
 
 ## Results:
 Quick assessment of outcome variables indicated that enormous variability existed in benefit seen by participants. One patient saw improvement of `r round(max(park$sixdif))` meters for their six minute walk difference. Another had worsening of `r round(min(park$sixdif))` on their walking distance. 
@@ -66,7 +66,7 @@ colnames(six_r2) <- c("rsq")
 six_crude <- as.data.frame(boot_r2(sixdif ~ Group + Gender + LEDD4 + Group*SixMn_Wk4, park))
 colnames(six_crude) <- c("rsq")
 # assign model name and bind into a dataframe
-six_r2$model <- 'Stage Adjusted'
+six_r2$model <- 'Adjusted'
 six_crude$model <- 'Crude'
 six_r2_full <- rbind(six_r2, six_crude)
 
@@ -88,7 +88,7 @@ sec_r2_full <- rbind(sec_r2, sec_crude)
 
 # density plot
 plot2 <- ggplot(sec_r2_full, aes(rsq, fill = model)) + geom_density(alpha = 0.2) +
-  ggtitle('5 Meter Time') + ylab('Density') + xlab('R-Squared') + theme(legend.position = c(0.8, .8))
+  ggtitle('5 Meter Time') + ylab('Density') + xlab('R-Squared') + theme(legend.position = c(0.8, .8)) 
 
 grid.arrange(plot1, plot2, ncol=2)
 
@@ -98,12 +98,12 @@ To mediate the effect of outlier results, R-squared values were fitted to bootst
 
 ```{r, echo=F}
 # crude linear model
-lm_six_crude <- lm(park$sixdif ~ Gender + Group + LEDD4 + Group*LEDD4, data = park)
-lm_sec_crude <- lm(park$secdif ~ Gender + Group + LEDD4 + Group*LEDD4, data = park) 
+lm_six_crude <- lm(park$sixdif ~ Gender + Group + LEDD4, data = park)
+lm_sec_crude <- lm(park$secdif ~ Gender + Group + LEDD4, data = park) 
 
 #adjusted for stage at week 0
-lm_sixminute <- lm(park$sixdif ~  Gender + Group + LEDD4 + Group*LEDD4 + HYstage0, data = park)
-lm_seconds <- lm(park$secdif ~ Gender + Group + LEDD4 + Group*LEDD4 + HYstage0, data = park)
+lm_sixminute <- lm(park$sixdif ~  Gender + Group + LEDD4 + HYstage0, data = park)
+lm_seconds <- lm(park$secdif ~ Gender + Group + LEDD4 + HYstage0, data = park)
 
 # Partial F tests:
 six_anova <- anova(lm_six_crude, lm_sixminute) # not significant
@@ -111,9 +111,9 @@ sec_anova <- anova(lm_sec_crude, lm_seconds) # not significant
 
 #obtain coefficients for table
 est_six_crude <- lm_six_crude$coefficients
-names(est_six_crude) <- c("Intercept", "Female", "FBF", "Aerobic", "Levidopa", "FBF:Levidopa", "Aerobic/Levidopa")
+names(est_six_crude) <- c("Intercept", "Female", "FBF", "Aerobic", "Levidopa")
 est_six_adj <- lm_sixminute$coefficients
-names(est_six_adj) <- c("Intercept", "Female", "FBF", "Aerobic", "Levidopa", "Stage", "FBF:Levidopa", "Aerobic:Levidopa")
+names(est_six_adj) <- c("Intercept", "Female", "FBF", "Aerobic", "Levidopa", "Stage")
 
 myList <- list(est_six_adj, est_six_crude)
 
@@ -125,11 +125,14 @@ pander(coef_table)
 ```
 
 ### Model Significance
-To understand if differences in Stage of Parkinson's Disease at the start of treatment impacted a patient's level of improvement by week 4, we ran two models: 1) An unadjusted model that contained the precision variables accounted for in study design, and 2) an adjusted model that added in stage at study outset. The unadjusted model contained Gender, Group, Levidopa dosage at month 4, and the interaction between levidopa dosage and Group. Change in slope estimates for predicting six minute walking distance are shown in Table 3. Slope estimates for two meter time are not shown because they were identical to those predicting six minute distance down to the 100th decimal place. Stage was not statistically significant (p=758), and due to the incredibly small changes in slope estimates for the other variables, it's contribution to the model had no clinical significance. Partial F-tests of the two models indicated that there was no significant difference in estimation ability for both six minute walking distance (p= .758) and for two meter walking time (p=.847).
+To understand if differences in Stage of Parkinson's Disease at the start of treatment impacted a patient's level of improvement by week 4, we ran two models: 1) An unadjusted model that contained the precision variables accounted for in study design, and 2) an adjusted model that added in stage at study outset. The unadjusted model contained Gender, Group, Levidopa dosage at month 4, and the interaction between levidopa dosage and Group. Change in slope estimates for predicting six minute walking distance are shown in Table 3. Slope estimates for two meter time are not shown because they were identical to those predicting six minute distance down to the 100th decimal place. For every 1 unit increase in Stage of Parkinson's Disease, the we estimate that the distance walked by a participant will decrease by 3.6 meters. However, Stage was not statistically significant (p=.758), and due to the incredibly small changes in slope estimates for the other variables, it's contribution to the model had no clinical significance. For every one unit increase in Stage of Parkinson's Disease, we estimate that the time taken to walk 2 meters will decrease by approximately .002 seconds. With a p value of .846, Stage did not predict change in time at a statistically significant level. Partial F-tests of the two models confirmed that there was no significant difference in estimation ability for both six minute walking distance (p=.758) and for two meter walking time (p=.847).
 
-## Discussion
-After generation of the crude and adjusted model, it was found that a participant's stage of Parkinson's Disease at the start of the study did not have a clinically significant impact on the level of improvement they saw after four months, regardless of which treatment group they were in. After control for Gender differences and Levidopa dose differences, at appears that treatment group was the best predictor of of the level of improvement in both six minute walk distance and two meter walk time. Large amounts of R-squared overlap shown in Table 2 indicated that the amount of variability predicted by the adjusted model differed in no clinically meaningful way from the unadjusted model. Though, due to enormous sample sizes from the bootstrap (1000 iterations), the differences were statistically significant.
-There are some limitations of this study that must be addressed. Table 1 shows that the majority of patients (85.1%) had stage 2 or 2.5 of Parkinson's Disease, with only 2 patients of the population retained at week four having a physician measured stage of 1. Due to the limited variability in stage, it is possible that true changes in response due to differing disease severity were not detected.
+
+## Discussion and Conclusions
+After generation of the crude and adjusted model, it was found that a participant's stage of Parkinson's Disease at the start of the study did not have a clinically significant impact on the level of improvement they saw after four months, regardless of which treatment group they were in. After control for Gender differences and Levidopa dose differences, it appears that treatment group was the best predictor of of the level of improvement in both six minute walk distance and two meter walk time. Large amounts of R-squared overlap shown in Table 2 indicated that the amount of variability predicted by the adjusted model differed in no clinically meaningful way from the unadjusted model. Though, due to enormous sample sizes from the bootstrap (1000 iterations), the differences were statistically significant.
+There is a limitation of this study that must be addressed. Table 1 shows that the majority of patients (85.1%) had stage 2 or 2.5 of Parkinson's Disease, with only 2 patients of the population retained at week four having a physician measured stage of 1. Due to the limited variability in stage, it is possible that true changes in response due to differing disease severity were not detected.
+Despite this, it may be encouraging that stage of Parkinson's Disease had no meaningful impact on level of improvement seen in study participants. This could imply that all patients, regardless of how much their disease has progressed, can benefit from exercise treatment to delay loss of physical independence. Further study to understand how exercise impacts a wide variety of stages of Parkinson's Disease would shed more light on this matter.
+
 
 
 
