@@ -69,7 +69,9 @@ colnames(six_r2) <- c("rsq")
 six_crude <- as.data.frame(boot_r2(sixdif ~ Group + Gender + LEDD4, park))
 colnames(six_crude) <- c("rsq")
 
+# t-test for significant difference in model R-squared values
 t.test(six_r2$rsq, six_crude$rsq)
+
 
 # assign model name and bind into a dataframe
 six_r2$model <- 'Adjusted'
@@ -92,14 +94,19 @@ sec_r2$model <- 'Stage Adjusted'
 sec_crude$model <- 'Crude'
 sec_r2_full <- rbind(sec_r2, sec_crude)
 
+# t-test for significant difference in model r-squared values
+t.test(sec_r2$rsq, sec_crude$rsq)
+
 # density plot
 plot2 <- ggplot(sec_r2_full, aes(rsq, fill = model)) + geom_density(alpha = 0.2) +
   ggtitle('2 Meter Time') + ylab('Density') + xlab('R-Squared') + theme(legend.position = c(0.7, .8)) 
 
 grid.arrange(plot1, plot2, ncol=2)
+
+round(median(sec_r2_full$rsq[sec_r2_full$model == "Stage Adjusted"]),3)
 ```
-To mediate the effect of outlier results, R-squared values were fitted to bootstrapped samples of the dataset (Figure 1). Values for both crude and adjusted models highly similar, as is shown by the large amount of overlap in density areas. The median values for the crude and adjusted models predicting improvement in six minute walking distance are `r round(median(six_r2_full$rsq[six_r2_full$model == "Crude"]),3)` and `r round(median(six_r2_full$rsq[six_r2_full$model == "Stage Adjusted"]),3)`, respectively. Those for improvement in 2 meter walking time are `r round(median(sec_r2_full$rsq[six_r2_full$model == "Crude"]),3)`
- `r round(median(sec_r2_full$rsq[six_r2_full$model == "Stage Adjusted"]),3)`, respectively.
+To mediate the effect of outlier results, R-squared values were fitted to bootstrapped samples of the dataset (Figure 1). Values for both crude and adjusted models highly similar, as is shown by the large amount of overlap in density areas. The median values for the crude and adjusted models predicting improvement in six minute walking distance are `r round(median(six_r2_full$rsq[six_r2_full$model == "Crude"]),3)` and `r round(median(six_r2_full$rsq[six_r2_full$model == "Adjusted"]),3)`, respectively. Those for improvement in 2 meter walking time are `r round(median(sec_r2_full$rsq[six_r2_full$model == "Crude"]),3)`
+ `r round(median(sec_r2_full$rsq[sec_r2_full$model == "Stage Adjusted"]),3)`, respectively.
 
 ```{r, echo=F}
 # crude linear model
