@@ -1,0 +1,159 @@
+---
+title: "Parkinson's Exercise Intervention"
+author: "Rachel Weber"
+date: "November 12, 2017"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+setwd("C:/Users/rache/Downloads")
+
+library(ggplot2)
+library(tableone)
+library(gridExtra)
+library(pander)
+park <- read.csv(file="Parkinsons.csv", sep=",")
+park$Group <- as.factor(park$Group)
+park$Gender <- as.factor(park$Gender)
+levels(park$Gender) <- c("Male", "Female")
+park <- park[complete.cases(park$SixMn_Wk4) == TRUE,]
+park <- park[complete.cases(park$FiveM_Wk4) == TRUE,]
+
+park$sixdif <- park$SixMn_Wk4-park$SixMn_Wk0 # positive if improvement
+park$secdif <- park$FiveM_Tm4-park$FiveM_Tm0 # negative if improvement
+
+```
+## Introduction
+Parkinson's Disease as a chronic disorder that progresses from mild tremors to the loss of mobility and cognitive function. It has been shown in previous studies that regular exercise may slow the progression of Parkinson's Disease, allowing individual independence for a longer period following diagnosis (cite). The study used here addresses the dearth of information pertaining to 'best practice' exercise therapy for people with early to mid-stage Parkinson's Disease. 121 participants were recruited for the study and were randomly assigned to one of three treatment groups, stratifying by Gender. The three exercise groups were as follows: 
+1. At home exercises recommended by the National Parkinson's Foundation. Participants attended one supervised session per month. 
+2. A flexibility/balance/function (FBF) program of three observed sessions weekly for the first 4 months, and tapered frequency down to once a month for the remaining 8 months. 
+3. An Aerobic Exercise program with a supervision structure identical to the FBF group.
+The participant population is detailed in Table 1. Retention rates remained quite high at 4 weeks with 86.8% of participants retained at this milestone. The average participant had been diagnoses with PD for 4.44 years with a standard deviation of 3.91 years. 41% of the population was female and the average participant was 64.5 years old.
+```{r, echo=F}
+## Vector of variables to summarize
+myVars <- c("Age", "YearsDx", "Gender", "HYstage0")
+## Vector of categorical variables that need transformation
+catVars <- c("Gender", "HYstage0")
+## Create a TableOne object
+tab2 <- CreateTableOne(vars = myVars, data = park, factorVars = catVars)
+print(tab2)
+```
+
+## Question and Hypothesis
+Published findings showed that the greatest improvement in mobility was seen at the four-month milestone (cite). Following this vein, the question addressed here asks whether a person's Hoehn and Yahr Stage of Parkinson's Disease at study outset was a predictor of the level of improvement seen at month four. It may be that those with more advanced Parkinson's did not confer as great a benefit from intervention as those with earlier stages. Stage was scaled from 1 (lowest) to 4 (highest), moving up in increments of .5. Our findings could serve the physician community by providing anticipated benefits for patients at various stages of PD. If a patient is more advanced, perhaps a more involved intervention would be prescribed. Conversely, those with very early stage PD may be encouraged to pick-up an exercise regimen, but could require less supervision and monitoring.
+Two important variables allow us to measure how a participant has improved. An increase in the distance they walk in 6-minutes, and a decrease in the time it takes them to walk 2 meters can inform us of improvement in mobility. These variables were chosen because improvement in either and/or both is a strong indicator that a patient can move about in their environment without assistance. This serves as an excellent means of ascertaining a person's need for in home care or residence in an assisted living facility, a decision that must be taken seriously by a person's family and physicians.
+
+
+## Methods
+We first generated two outcome variables. 1) The difference in time taken to walk 2 meters between month 4 and week 0, a negative value indicated a decrease in time. 2) The difference in distance walked in 6 minutes between month 4 and month 0, with positive values indicating improvement. 
+Participants worsened by an average of `r round(mean(park$sixdif), 2)` meters in their 6 minute walk with standard deviation `r round(sd(park$sixdif), 2)`. This incredible variability suggests that some patients benefitted much greater than others. Participants improved by an average of `r round(mean(park$secdif), 2)` seconds in their 2 meter walk time with standard deviation `r round(sd(park$secdif), 2)`. Again this indicates that patients had varying degrees of response to the intervention.\n
+
+To understand if differences in Stage of Parkinson's Disease at the start of treatment impacted a patient's level of improvement by month 4, we ran two models: 1) An unadjusted (crude) model that contained the precision variables accounted for in study design (Gender, Group, and Levidopa dosage at month four), and 2) an adjusted model that added in Stage at study outset. These predicted either six-minute walk distance or 2-meter walk time. To assess model capabilities, we conducted a stratified bootstrap assessment of R2 values for the crude and adjusted models, ensuring that equal proportions of patients from the three treatment groups were present in each sample. Following generation of R-squared values, multivariate linear models were compared against each other using a partial-F test.To assess model capabilities, we conducted a stratified bootstrap assessment of R-squared values for the crude and adjusted models, ensuring that equal proportions of patients from the three treatment groups were present in each sample. Following generation of R-squared values, multivariate linear models were compared against each other using a partial-F test.
+
+## Results:
+Quick assessment of outcome variables indicated that enormous variability existed in benefit seen by participants. One patient saw improvement of `r round(max(park$sixdif))` meters for their six minute walk difference. Another had worsening of `r round(min(park$sixdif))` on their walking distance. 
+
+### R-Squared Values:
+```{r, echo=F}
+# bootstrap function that reports bootstrapped r squared values
+source("C:/Users/rache/Documents/Methods 6611/Final Project/Stratified Sampling Code.R", local = TRUE)
+set.seed(222)
+boot_r2 <- function(formula, dat){
+  fun_lm <- function(formula, dat){
+    summary(lm(formula, data=stratified(park, 2, nrow(park)/3, select = NULL, replace = TRUE)))$r.squared
+  }
+  sapply(1:1000, function(x) fun_lm(formula,dat))
+}
+
+# bootstrap r squared for change in 6 minute distance
+six_r2 <- as.data.frame(boot_r2(sixdif ~ HYstage0 + Group + Gender + LEDD4, park))
+colnames(six_r2) <- c("rsq")
+six_crude <- as.data.frame(boot_r2(sixdif ~ Group + Gender + LEDD4, park))
+colnames(six_crude) <- c("rsq")
+
+# t-test for significant difference in model R-squared values
+t.test(six_r2$rsq, six_crude$rsq)
+
+
+# assign model name and bind into a dataframe
+six_r2$model <- 'Adjusted'
+six_crude$model <- 'Crude'
+six_r2_full <- rbind(six_r2, six_crude)
+
+# density plot
+plot1 <- ggplot(six_r2_full, aes(rsq, fill = model)) + geom_density(alpha = 0.2) +
+  ggtitle('6 Minute Distance') + ylab('Density') + xlab('R-Squared') + guides(fill=FALSE)
+# enormous overlap indicates that stage at diagnosis may not improve
+# variation predicted by model
+
+# bootstrap r squared for change in 2 meter time
+sec_r2 <- as.data.frame(boot_r2(secdif ~ HYstage0 + Group + Gender + LEDD4, park))
+colnames(sec_r2) <- c("rsq")
+sec_crude <- as.data.frame(boot_r2(secdif ~ Group + Gender + LEDD4, park))
+colnames(sec_crude) <- c("rsq")
+# assign model name and bind into 1 dataframe
+sec_r2$model <- 'Stage Adjusted'
+sec_crude$model <- 'Crude'
+sec_r2_full <- rbind(sec_r2, sec_crude)
+
+# t-test for significant difference in model r-squared values
+t.test(sec_r2$rsq, sec_crude$rsq)
+quantile(sec_r2$rsq)
+quantile(sec_crude$rsq)
+quantile(six_r2$rsq)
+round(quantile(six_crude$rsq), 2)
+
+# density plot
+plot2 <- ggplot(sec_r2_full, aes(rsq, fill = model)) + geom_density(alpha = 0.2) +
+  ggtitle('5 Meter Time') + ylab('Density') + xlab('R-Squared') + theme(legend.position = c(0.7, .8)) 
+
+grid.arrange(plot1, plot2, ncol=2)
+
+```
+To mediate the effect of outlier results, R-squared values were fitted to bootstrapped samples of the dataset (Figure 1). Values for both crude and adjusted models highly similar, as is shown by the large amount of overlap in density areas. The mean values for the crude and adjusted models predicting improvement in six minute walking distance are `r round(mean(six_r2_full$rsq[six_r2_full$model == "Crude"]),3)` and `r round(mean(six_r2_full$rsq[six_r2_full$model == "Adjusted"]),3)`, respectively. Those for improvement in 2 meter walking time are `r round(mean(sec_r2_full$rsq[six_r2_full$model == "Crude"]),3)`
+ `r round(mean(sec_r2_full$rsq[sec_r2_full$model == "Stage Adjusted"]),3)`, respectively.
+
+```{r, echo=F}
+# crude linear model
+lm_six_crude <- lm(park$sixdif ~ Gender + Group + LEDD4, data = park)
+lm_sec_crude <- lm(park$secdif ~ Gender + Group + LEDD4, data = park) 
+
+#adjusted for stage at week 0
+lm_sixminute <- lm(park$sixdif ~  Gender + Group + LEDD4 + HYstage0, data = park)
+lm_seconds <- lm(park$secdif ~ Gender + Group + LEDD4 + HYstage0, data = park)
+
+# Partial F tests:
+six_anova <- anova(lm_six_crude, lm_sixminute) # not significant
+sec_anova <- anova(lm_sec_crude, lm_seconds) # not significant
+
+#obtain coefficients for table
+est_six_crude <- lm_six_crude$coefficients
+names(est_six_crude) <- c("Intercept", "Female", "FBF", "Aerobic", "Levidopa")
+est_six_adj <- lm_sixminute$coefficients
+names(est_six_adj) <- c("Intercept", "Female", "FBF", "Aerobic", "Levidopa", "Stage")
+est_sec_crude <- lm_sec_crude$coefficients
+names(est_sec_crude) <- c("Intercept", "Female", "FBF", "Aerobic", "Levidopa")
+est_sec_adj <- lm_seconds$coefficients
+names(est_sec_adj) <- c("Intercept", "Female", "FBF", "Aerobic", "Levidopa", "Stage")
+
+myList <- list(est_six_adj, est_six_crude, est_sec_adj, est_sec_crude)
+
+l <- myList
+coef_table <- do.call(rbind, lapply(lapply(l, unlist), "[",
+                      unique(unlist(c(sapply(l,names))))))
+pander(coef_table)
+```
+
+### Model Significance
+### Six Minute Walk Distance
+The crude model for predicting change in distance had a p value of .469 and had no individual variables with significance. In the Adjusted model, for every 1 unit increase in Stage of Parkinson's Disease, we estimate that the distance walked by a participant will decrease by 7.77 meters (Table 2). However, Stage was not statistically significant (p=.758). When adjusting for Stage, women are estimated to worsen by 8.29 meters more than men. This difference is not statistically significant (p: .409). As in the crude model, no individual variable was statistically significant. 
+### Two Meter Walk Time
+The crude model for predicting change in time had a p value of .092. Female was a significant predictor of improvement with a p value of .012. Female participants were estimated to improve by .23 seconds more than male participants (Table 2). In the adjusted model, for every one unit increase in Stage of Parkinson's Disease, we estimate that the time taken to walk 2 meters will decrease by .0008 seconds, a result counter to that which was expected. With a p value of .994, Stage did not predict change in time at a statistically significant level. However, Gender remained statistically significant in the adjusted model and were still estimated to improve by .2 seconds more than males (Table 2). However, since the overall model was not significant, this estimate is not of clinical importance.
+Partial F-tests of the two models confirmed that there was no significant difference in estimation ability for both adjusted six-minute walking distance (p=.758) and for adjusted two-meter walking time (p=.847) compared to their respective crude models.
+
+
+
+## Discussion and Conclusions
+After generation of the crude and adjusted models, it was found that a participant's stage of Parkinson's Disease at the start of the study did not have a statistically or clinically significant impact on the level of improvement they saw after four months, regardless of which treatment group they were in. After control for Group differences and Levidopa dose differences, Gender was the only significant predictor of of the level of improvement in six-minute walk distance (p value: .012). However, this estimated difference of .2 meters is not clinically significant. Large amounts of R2 overlap shown in Figure 1 indicated that the amount of variability predicted by the adjusted models for six-minute distance and 2-meter time differed in no clinically meaningful way from the unadjusted models, though due to large sample sizes in the bootstrap, the differences were statistically significant in t-tests for each model pair. 
+There is a limitation of this study that must be addressed. Table 1 shows that the majority of patients (85.1%) had stage 2 or 2.5 of Parkinson's Disease, with only 2 patients of the population retained at week four having a physician measured stage of 1. Due to the limited variability in stage, it is possible that true changes in response due to differing disease severity were not detected. Despite this, it may be encouraging that stage of Parkinson's Disease had no meaningful impact on level of improvement seen in study participants. This could imply that all patients, regardless of how much their disease has progressed, can benefit from exercise treatment to delay loss of physical independence. Further study to understand how exercise impacts a wide variety of stages of Parkinson's Disease would shed more light on this matter.
